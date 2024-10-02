@@ -1,6 +1,7 @@
 from datetime import datetime
-from enum import Enum, auto
-from pydantic import BaseModel
+from enum import Enum
+from typing import Any, Dict
+from pydantic import BaseModel, Field
 
 
 class RecordType(str, Enum):
@@ -16,6 +17,7 @@ class PartialRecordSchema(BaseModel):
     score: int
     name: str
     type: RecordType
+    metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
 class RecordSchema(PartialRecordSchema):
