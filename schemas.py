@@ -23,3 +23,16 @@ class PartialRecordSchema(BaseModel):
 class RecordSchema(PartialRecordSchema):
     id: str
     timestamp: datetime
+
+    def json_safely(self):
+        data = self.model_dump()
+        data["timestamp"] = data["timestamp"].timestamp()
+        return data
+
+
+class RankedRecord(BaseModel):
+    rank: int
+    record: RecordSchema
+
+    def json_safely(self):
+        return {"rank": self.rank, "record": self.record.json_safely()}
