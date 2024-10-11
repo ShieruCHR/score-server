@@ -36,3 +36,6 @@ class CRUD:
         )
         self.data.append(new_data)
         return self.with_rank(new_data)
+
+    def delete(self, id: str):
+        self.data = list(filter(lambda x: x.id != id, self.data))

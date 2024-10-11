@@ -74,6 +74,13 @@ async def post_record(record: PartialRecordSchema):
     return data
 
 
+@app.delete("/{record_id}")
+async def delete_record(record_id: str):
+    crud.delete(record_id)
+    await manager.update()
+    return {"status": "ok"}
+
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
