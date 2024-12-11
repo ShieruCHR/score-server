@@ -3,6 +3,7 @@ import json
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from sqlmodel import Session, SQLModel, create_engine
 
 import config
 from crud import CRUD
@@ -30,7 +31,7 @@ class ConnectionManager:
 
     async def update(self):
         for record in crud.get_all():
-            await self.broadcast(record.json_safely())
+            await self.broadcast(record)
 
 
 manager = ConnectionManager()
@@ -39,7 +40,10 @@ manager = ConnectionManager()
 @asynccontextmanager
 async def lifespan(_):
     global crud
-    crud = CRUD()
+    engine = create_engine("sqlite:///database.db")
+    SQLModel.metadata.create_all(engine)
+
+    crud = CRUD(engine)
     yield
 
 
@@ -59,11 +63,18 @@ def get_single_record(record_id: str):
     return crud.get_by_id(record_id)
 
 
-@app.post("/")
+@app.post("/", response_model=RecordSchema)
 async def post_record(record: PartialRecordSchema):
     data = crud.create_new(record)
     await manager.update()
-    return data
+    return RecordSchema(
+        id=data.id,
+        score=data.score,
+        name=data.name,
+        type=data.type,
+        metadata=data.score_metadata,
+        timestamp=data.created_at,
+    )
 
 
 @app.delete("/{record_id}")

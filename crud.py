@@ -1,41 +1,57 @@
 import datetime
-from schemas import PartialRecordSchema, RankedRecord, RecordSchema, RecordType
+import json
 from uuid import uuid4
-import config
+
+from sqlalchemy import Engine
+from sqlmodel import Session, select
+
+from models import Record
+from schemas import PartialRecordSchema, RecordType
 
 
 class CRUD:
-    def __init__(self, data: list[RecordSchema]):
-        self.data = data
+    def __init__(self, engine: Engine):
+        self.engine = engine
 
     def get_all(self):
-        return tuple(map(self.with_rank, self.data))
+        session = Session(self.engine)
+        stmt = select(Record).order_by(Record.score.desc())
+        return session.exec(stmt).all()
 
     def get_by_mode(self, mode: RecordType):
-        return tuple(map(self.with_rank, filter(lambda x: x.type == mode, self.data)))
+        with Session(self.engine) as session:
+            stmt = (
+                select(Record).where(Record.type == mode).order_by(Record.score.desc())
+            )
+            return (
+                {"rank": i, "record": row}
+                for i, row in enumerate(session.exec(stmt).all())
+            )
 
     def get_by_id(self, id: str):
-        return next(map(self.with_rank, filter(lambda x: x.id == id, self.data)))
+        with Session(self.engine) as session:
+            stmt = select(Record).where(Record.id == id)
+            return session.exec(stmt).first()
 
-    def with_rank(self, record: RecordSchema) -> RankedRecord:
-        sorted_data = sorted(
-            tuple(filter(lambda x: x.type == record.type, self.data)),
-            key=lambda x: x.score,
-            reverse=True,
-        )
-        rank = next(
-            (i for i, r in enumerate(sorted_data, 1) if r.id == record.id), None
-        )
-        return RankedRecord(rank=rank, record=record)
-
-    def create_new(self, record: PartialRecordSchema) -> RecordSchema:
-        new_data = RecordSchema(
-            id=str(uuid4()),
-            timestamp=datetime.datetime.now(tz=config.TZ),
-            **record.model_dump()
-        )
-        self.data.append(new_data)
-        return self.with_rank(new_data)
+    def create_new(self, record: PartialRecordSchema) -> Record:
+        with Session(self.engine) as session:
+            new_record = Record(
+                id=str(uuid4()),
+                score=record.score,
+                name=record.name,
+                type=record.type,
+                raw_metadata=json.dumps(record.metadata),
+                raw_created_at=datetime.datetime.now().isoformat(),
+            )
+            session.add(new_record)
+            session.commit()
+            session.refresh(new_record)
+        return new_record
 
     def delete(self, id: str):
-        self.data = list(filter(lambda x: x.id != id, self.data))
+        with Session(self.engine) as session:
+            stmt = select(Record).where(Record.id == id)
+            record = session.exec(stmt).first()
+            session.delete(record)
+            session.commit()
+            return record

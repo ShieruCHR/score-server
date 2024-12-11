@@ -136,3 +136,5 @@ cython_debug/
 
 records.json
 mock.py
+
+database.db

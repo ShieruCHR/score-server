@@ -5,18 +5,18 @@ from sqlalchemy import Column
 from sqlmodel import Field, SQLModel
 
 
-class Record(SQLModel):
-    id: int = Field(primary_key=True)
+class Record(SQLModel, table=True):
+    id: str = Field(default=None, primary_key=True)
     score: int
     name: str
     type: str
-    _metadata: str = Field(default="", sa_column=Column("metadata"))
-    _created_at: str = Field(default="", sa_column=Column("created_at"))
+    raw_metadata: str = Field(default="")
+    raw_created_at: str = Field(default="")
 
     @property
-    def metadata(self):
-        return json.loads(self._metadata)
+    def score_metadata(self):
+        return json.loads(self.raw_metadata)
 
     @property
     def created_at(self):
-        return datetime.fromisoformat(self._created_at)
+        return datetime.fromisoformat(self.raw_created_at)
