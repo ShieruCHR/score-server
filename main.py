@@ -1,9 +1,10 @@
-from contextlib import asynccontextmanager
 import datetime
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 import json
-import config
+from contextlib import asynccontextmanager
 
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+
+import config
 from crud import CRUD
 from schemas import PartialRecordSchema, RecordSchema, RecordType
 
@@ -38,17 +39,8 @@ manager = ConnectionManager()
 @asynccontextmanager
 async def lifespan(_):
     global crud
-    with open("records.json", encoding="UTF-8") as f:
-        records = json.load(f)
-        for record in records:
-            record["timestamp"] = datetime.datetime.fromtimestamp(
-                record["timestamp"], config.TZ
-            )
-            data.append(RecordSchema(**record))
-    crud = CRUD(data)
+    crud = CRUD()
     yield
-    with open("records.json", encoding="UTF-8", mode="w") as f:
-        json.dump(tuple(map(lambda d: d.json_safely(), data)), f, ensure_ascii=False)
 
 
 app = FastAPI(lifespan=lifespan)
